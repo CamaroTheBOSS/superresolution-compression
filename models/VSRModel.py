@@ -4,7 +4,7 @@ from typing import Optional, Any, List
 import torch
 import torch.nn.functional as f
 from torch import Tensor
-from torch.nn import Module, Conv2d, BatchNorm2d, MaxPool2d, ConvTranspose2d
+from torch.nn import Module, Conv2d, MaxPool2d, ConvTranspose2d
 
 
 @dataclass
@@ -119,7 +119,11 @@ class VSRModel(Module):
         features = self.encode(interpolated_frames)
         reconstruction = self.decode(features)
         reconstruction = torch.nn.functional.interpolate(reconstruction, size=desired_size,
-                                                         mode="bilinear", align_corners=False) + interpolated_frames
+                                                         mode="bilinear", align_corners=False)
+        for rec in reconstruction:
+            print(f"{rec.min(), rec.max()}")
+        print("----------------------------")
+        reconstruction = reconstruction + interpolated_frames
 
         loss = {}
         if self.training:
