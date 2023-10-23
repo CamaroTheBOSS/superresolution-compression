@@ -30,7 +30,8 @@ def train_epoch(dataloader: DataLoader, model: torch.nn.Module, optimizer: torch
         metric_logger.update(loss, prefix="loss_")
         metric_logger.update({"lr": optimizer.param_groups[0]['lr']})
 
-        loss["epoch"].backward()
+        if loss["epoch"].requires_grad:
+            loss["epoch"].backward()
         optimizer.step()
 
         # zero the parameter gradients
