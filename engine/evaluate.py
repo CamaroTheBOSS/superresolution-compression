@@ -19,6 +19,5 @@ def evaluate_model(dataloader: DataLoader, model: torch.nn.Module, device: torch
         with torch.no_grad():
             outputs = model(frames, labels=frames_sr)
             metric_accumulator.update(outputs.reconstruction, frames_sr)
-
-    metric_accumulator.accumulate((len(dataloader) * dataloader.batch_size))
+    metric_accumulator.accumulate(len(dataloader.dataset))
     return metric_accumulator.get_metrics()
