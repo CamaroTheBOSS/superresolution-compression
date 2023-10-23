@@ -53,7 +53,7 @@ def train(name: str = typer.Option("run", "--name", help="Name of run"),
     test_dataloader = DataLoader(test_set, batch_size=batch, shuffle=False, collate_fn=collate_fn)
 
     # 3. Get the model and set the optimizer
-    model = DummyBilinear().to(device)
+    model = SRCNN().to(device)
     optimizer = AdamW(model.parameters(), lr=learning_rate)
     steps = epochs + 10
     lr_scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=steps, T_mult=1)

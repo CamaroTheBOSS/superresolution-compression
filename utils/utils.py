@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import cv2
 import numpy as np
@@ -9,8 +10,9 @@ from torch import Tensor
 
 def init_training_directory(output_root: str, run_name: str) -> str:
     run_path = os.path.join(output_root, run_name)
-    if not os.path.exists(run_path):
-        os.makedirs(run_path)
+    if os.path.exists(run_path):
+        shutil.rmtree(run_path)
+    os.makedirs(run_path)
     return run_path
 
 
