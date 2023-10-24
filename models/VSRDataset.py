@@ -10,18 +10,9 @@ from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
 
 
-class NormalizeFromMinus1To1:
-    def __init__(self):
-        pass
-
-    def __call__(self, input_tensor):
-        return input_tensor * 2 - 1
-
-
 def get_transforms() -> Compose:
     return Compose([
-        ToTensor(),
-        NormalizeFromMinus1To1()
+        ToTensor()
     ])
 
 
