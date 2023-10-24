@@ -1,14 +1,12 @@
 import glob
 import os
 from abc import ABC
-from pathlib import Path
 from typing import Tuple
 
 import torch
 from PIL import Image
 from torch import Tensor
-from torch.nn.functional import pad
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
 
 
@@ -27,90 +25,40 @@ def get_transforms() -> Compose:
     ])
 
 
-def get_max_size_from_inputs(inputs):
-    max_size_lr, max_size_hr = (0, 0), (0, 0)
-    for low_res, high_res in inputs:
-        lr_shape = low_res.shape[-2:]
-        hr_shape = high_res.shape[-2:]
-        max_size_lr = max(max_size_lr[0], lr_shape[0]), max(max_size_lr[1], lr_shape[1])
-        max_size_hr = max(max_size_hr[0], hr_shape[0]), max(max_size_hr[1], hr_shape[1])
-    return max_size_lr, max_size_hr
-
-
-def align_images_with_pad(inputs):
-    max_size_lr, max_size_hr = get_max_size_from_inputs(inputs)
-    for e, (low_res, high_res) in enumerate(inputs):
-        lr_shape = low_res.shape[-2:]
-        hr_shape = high_res.shape[-2:]
-
-        pad_updown, pad_side = (max_size_lr[0] - lr_shape[0]), (max_size_lr[1] - lr_shape[1])
-        low_res_padded = pad(low_res, (0, pad_side, 0, pad_updown), value=-1)
-
-        pad_updown, pad_side = (max_size_hr[0] - hr_shape[0]), (max_size_hr[1] - hr_shape[1])
-        high_res_padded = pad(high_res, (0, pad_side, 0, pad_updown), value=-1)
-
-        inputs[e] = (low_res_padded, high_res_padded)
-
-    return inputs
-
-
-def collate_fn(inputs) -> dict:
-    lr_shapes = torch.stack([torch.Tensor(tuple(i[0].shape[-2:])) for i in inputs])
-    hr_shapes = torch.stack([torch.Tensor(tuple(i[0].shape[-2:])) for i in inputs])
-    aligned_inputs = align_images_with_pad(inputs)
-    batch = {"LR": torch.stack([i[0] for i in aligned_inputs], dim=0),
-             "HR": torch.stack([i[1] for i in aligned_inputs], dim=0),
-             "LR_shapes": lr_shapes,
-             "HR_shapes": hr_shapes}
-    return batch
-
-
-class Video:
-    def __init__(self, path_to_txt: str) -> None:
-        self.path_to_txt = path_to_txt
-        self.frames = []
-        with open(path_to_txt, "r") as file:
-            for relative_path in file.readlines():
-                self.frames.append(os.path.join(Path(path_to_txt).parent, relative_path[:-1]))
-
-    def __len__(self):
-        return len(self.frames)
-
-
 class VSRDataset(Dataset, ABC):
-    def __init__(self, dataset_root: str, downscale_factor: float = 2, test=False) -> None:
+    def __init__(self, dataset_root: str, upscale_factor: float = 2.) -> None:
+        """
+        Dataset used for learning video superresolution. Dataloader with this dataset would return batches with
+        shape B, N, C, H, W, where B is batch size, N number of frames of the longest video in batch
+        :param dataset_root: path to dataset root [str]
+        :param upscale_factor: up-scaling factor desired in superresolution algorithm
+        """
         super().__init__()
         self.root = dataset_root
-        self.downscale_factor = downscale_factor
+        self.upscale_factor = upscale_factor
         self.transform = get_transforms()
         txt_files = list(filter(lambda filename: filename.endswith(".txt"), os.listdir(dataset_root)))
-        self.videos = [Video(os.path.join(dataset_root, file)) for file in txt_files]
-        self.videos = [self.videos[-1]] if test else self.videos[:-1]
+        self.video_txt_files = [os.path.join(self.root, filename) for filename in txt_files]
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
-        frame_sr = Image.open(self.get_next_frame_path(index)).convert("RGB")
-        frame = frame_sr.resize((int(frame_sr.width // self.downscale_factor),
-                                 int(frame_sr.height // self.downscale_factor)))
-        frame = self.transform(frame)
-        frame_sr = self.transform(frame_sr)
+        with open(self.video_txt_files[index]) as f:
+            hr_video = []
+            lr_video = []
+            for path_to_frame in f.readlines():
+                path_to_frame = path_to_frame.replace("\n", "")
+                hr_frame = Image.open(os.path.join(self.root, path_to_frame)).convert("RGB")
+                lr_frame = hr_frame.resize((int(hr_frame.width // self.upscale_factor),
+                                            int(hr_frame.height // self.upscale_factor)))
+                hr_video.append(self.transform(hr_frame))
+                lr_video.append(self.transform(lr_frame))
 
-        return frame, frame_sr
+        hr_video = torch.stack(hr_video)
+        lr_video = torch.stack(lr_video)
 
-    def __len__(self) -> int:
-        return sum([len(video) for video in self.videos])
+        return lr_video, hr_video
 
-    def get_next_frame_path(self, frame_idx: int) -> str:
-        cumulative_length = 0
-        video_idx = 0
-        for i in range(0, len(self.videos)):
-            if frame_idx < cumulative_length + len(self.videos[i]):
-                video_idx = i
-                break
-            cumulative_length += len(self.videos[i])
-
-        path = self.videos[video_idx].frames[frame_idx - cumulative_length]
-        # print(f"Getting frame {frame_idx} from video {video_idx}")
-        return path
+    def __len__(self):
+        return len(self.video_txt_files)
 
 
 class SRDataset(Dataset, ABC):

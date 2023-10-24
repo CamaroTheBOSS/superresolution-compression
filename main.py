@@ -12,8 +12,9 @@ from engine.evaluate import evaluate_model
 from engine.train import train_epoch
 from models.DummyBilinear import DummyBilinear
 from models.SRCNN import SRCNN
-from models.VSRDataset import VSRDataset, collate_fn, SRDataset
+from models.VSRDataset import VSRDataset, SRDataset
 from models.VSRModel import VSRModel
+from utils.collate_functions import collate_image_superresolution
 from utils.logs import FileLogger, log_to_wandb
 from utils.utils import init_training_directory, save_args, save_results
 
@@ -32,28 +33,28 @@ def train(name: str = typer.Option("run", "--name", help="Name of run"),
         wandb.login(key="412dfebd88d6fb0be9f1caf8fd73c2363c48c8e0")
         wandb.init(project="superresolution-compression", name=name, group=group_name)
 
-    torch.manual_seed(107)
+    torch.manual_seed(108)
     output_dir = init_training_directory(output_root, name)
     logger = FileLogger(output_dir, "train.log")
     save_args(output_dir, **dict(name=name, group_name=group_name, epochs=epochs, batch=batch, learning_rate=learning_rate,
                                  output_root=output_root, disable_wandb=disable_wandb))
 
-    src_dataset = './datasets/SR'
+    src_dataset = './datasets/VSR/VID4'
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(f"Output directory: {output_dir}")
     print(f"Device: {device}")
 
     # 2. Initialize dataloaders
-    # train_set = VSRDataset(src_dataset)
-    # test_set = VSRDataset(src_dataset, test=True)
-    train_set = SRDataset(src_dataset, ["BSD100", "Set5", "Urban100"])
-    test_set = SRDataset(src_dataset, ["Set14"])
+    train_set = VSRDataset(src_dataset)
+    test_set = VSRDataset(src_dataset)
+    # train_set = SRDataset(src_dataset, ["BSD100", "Set5", "Urban100"])
+    # test_set = SRDataset(src_dataset, ["Set14"])
 
-    train_dataloader = DataLoader(train_set, batch_size=batch, shuffle=True, collate_fn=collate_fn)
-    test_dataloader = DataLoader(test_set, batch_size=batch, shuffle=False, collate_fn=collate_fn)
+    train_dataloader = DataLoader(train_set, batch_size=batch, shuffle=True, collate_fn=collate_image_superresolution)
+    test_dataloader = DataLoader(test_set, batch_size=batch, shuffle=False, collate_fn=collate_image_superresolution)
 
     # 3. Get the model and set the optimizer
-    model = SRCNN().to(device)
+    model = VSRModel().to(device)
     optimizer = AdamW(model.parameters(), lr=learning_rate)
     steps = epochs + 10
     lr_scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=steps, T_mult=1)
