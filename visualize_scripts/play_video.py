@@ -1,4 +1,5 @@
 import os
+import time
 
 import cv2
 import numpy as np
@@ -9,29 +10,14 @@ from kornia.augmentation import ColorJiggle, RandomVerticalFlip, RandomHorizonta
 from torch import Tensor
 from torchvision.transforms import Compose
 
-from models.VSRDataset import get_transforms
+from models.VSRDataset import get_transforms, augment_video
 
 
 def augmentation(video: Tensor):
-    def get_augmentation():
-        crop_size = np.random.randint(video.shape[-2] // 3, video.shape[-2]), \
-                    np.random.randint(video.shape[-1] // 3, video.shape[-1])
-        print(crop_size)
-        return Compose([
-            ColorJiggle(brightness=(0.85, 1.15), contrast=(0.75, 1.15), saturation=(0.75, 1.25), hue=(-0.02, 0.02),
-                        same_on_batch=True),
-            RandomCrop(size=crop_size, same_on_batch=True),
-            RandomVerticalFlip(same_on_batch=True),
-            RandomHorizontalFlip(same_on_batch=True),
-            RandomRotation(degrees=180, same_on_batch=True),
-        ])
-
-    # RandomCrop(size=(video.shape[-2], video.shape[-1]), same_on_batch=True)
-    augment = get_augmentation()
-    transformed_video = augment(video)
+    transformed_video = augment_video(video.to(torch.device("cuda")))
     transformed_video = Resize(size=(video.shape[-2], video.shape[-1]))(transformed_video)
 
-    return video, transformed_video
+    return video, transformed_video.to(torch.device("cpu"))
 
 
 @torch.no_grad()
