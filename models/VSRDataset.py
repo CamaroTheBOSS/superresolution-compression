@@ -1,5 +1,6 @@
 import glob
 import os
+import time
 from abc import ABC
 from typing import Tuple
 
@@ -58,14 +59,7 @@ class VSRDataset(Dataset, ABC):
         self.video_txt_files = [os.path.join(self.root, filename) for filename in txt_files]
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
-        with open(self.video_txt_files[index]) as f:
-            hr_video = []
-            for path_to_frame in f.readlines():
-                path_to_frame = path_to_frame.replace("\n", "")
-                hr_frame = Image.open(os.path.join(self.root, path_to_frame)).convert("RGB")
-                hr_video.append(self.transform(hr_frame))
-        hr_video = torch.stack(hr_video).to(self.device)
-
+        hr_video = self.read_video(index)
         hr_video = augment_video(hr_video)
         lr_video = Resize((int(hr_video.shape[-2] / self.upscale_factor),
                            int(hr_video.shape[-1] / self.upscale_factor)))(hr_video)
@@ -74,6 +68,17 @@ class VSRDataset(Dataset, ABC):
 
     def __len__(self):
         return len(self.video_txt_files)
+
+    def read_video(self, index):
+        start = time.time()
+        with open(self.video_txt_files[index]) as f:
+            hr_video = []
+            for path_to_frame in f.readlines():
+                path_to_frame = path_to_frame.replace("\n", "")
+                hr_frame = Image.open(os.path.join(self.root, path_to_frame)).convert("RGB")
+                hr_video.append(self.transform(hr_frame))
+        print(f"Video read in {time.time() - start}")
+        return torch.stack(hr_video).to(self.device)
 
 
 class SRDataset(Dataset, ABC):

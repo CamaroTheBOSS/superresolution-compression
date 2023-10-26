@@ -14,7 +14,7 @@ from models.DummyBilinear import DummyBilinear
 from models.SRCNN import SRCNN
 from models.VSRDataset import VSRDataset, SRDataset
 from models.VSRModel import VSRModel
-from utils.collate_functions import collate_image_superresolution
+from utils.collate_functions import collate_SR
 from utils.logs import FileLogger, log_to_wandb
 from utils.utils import init_training_directory, save_args, save_results
 
@@ -36,8 +36,8 @@ def train(name: str = typer.Option("run", "--name", help="Name of run"),
     torch.manual_seed(108)
     output_dir = init_training_directory(output_root, name)
     logger = FileLogger(output_dir, "train.log")
-    save_args(output_dir, **dict(name=name, group_name=group_name, epochs=epochs, batch=batch, learning_rate=learning_rate,
-                                 output_root=output_root, disable_wandb=disable_wandb))
+    save_args(output_dir, **dict(name=name, group_name=group_name, epochs=epochs, batch=batch,
+                                 learning_rate=learning_rate, output_root=output_root, disable_wandb=disable_wandb))
 
     src_dataset = './datasets/VSR/VID4'
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -50,8 +50,8 @@ def train(name: str = typer.Option("run", "--name", help="Name of run"),
     # train_set = SRDataset(src_dataset, ["BSD100", "Set5", "Urban100"])
     # test_set = SRDataset(src_dataset, ["Set14"])
 
-    train_dataloader = DataLoader(train_set, batch_size=batch, shuffle=True, collate_fn=collate_image_superresolution)
-    test_dataloader = DataLoader(test_set, batch_size=batch, shuffle=False, collate_fn=collate_image_superresolution)
+    train_dataloader = DataLoader(train_set, batch_size=batch, shuffle=True, collate_fn=collate_SR)
+    test_dataloader = DataLoader(test_set, batch_size=batch, shuffle=False, collate_fn=collate_SR)
 
     # 3. Get the model and set the optimizer
     model = VSRModel().to(device)
