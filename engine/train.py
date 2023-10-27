@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import torch
-from torch import autocast
 from torch.utils.data import DataLoader
 
 from utils.logs import MetricLogger
@@ -19,11 +18,11 @@ def train_epoch(dataloader: DataLoader, model: torch.nn.Module, optimizer: torch
     for idx, batch in enumerate(metric_logger(dataloader, header=f"Epoch [{epoch}]")):
         step_counter += 1
         torch.cuda.empty_cache()
-        frames = batch["LR"].to(device)
-        frames_sr = batch["HR"].to(device)
+        lr_frames = batch["LR"].to(device)
+        hr_frames = batch["HR"].to(device)
 
         # forward pass
-        outputs = model(frames, labels=frames_sr)
+        outputs = model(lr_frames, labels=hr_frames)
         loss = {key: value for key, value in outputs.loss.items()}
         loss["epoch"] = sum(loss_value for loss_value in outputs.loss.values())
         loss_avr = {key: loss_avr[key] + value for key, value in loss.items()}

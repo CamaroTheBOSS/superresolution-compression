@@ -13,11 +13,11 @@ def evaluate_model(dataloader: DataLoader, model: torch.nn.Module, device: torch
     for idx, batch in enumerate(tqdm(dataloader)):
         torch.cuda.empty_cache()
 
-        frames = batch["LR"].to(device)
-        frames_sr = batch["HR"].to(device)
+        lr_frames = batch["LR"].to(device)
+        hr_frames = batch["HR"].to(device)
 
         with torch.no_grad():
-            outputs = model(frames, labels=frames_sr)
-            metric_accumulator.update(outputs.reconstruction, frames_sr)
+            outputs = model(lr_frames, labels=hr_frames)
+            metric_accumulator.update(outputs.reconstruction, hr_frames)
     metric_accumulator.accumulate(len(dataloader.dataset))
     return metric_accumulator.get_metrics()

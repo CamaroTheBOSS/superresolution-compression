@@ -3,28 +3,8 @@ from enum import Enum
 
 import torch
 from torch import Tensor
-from torchmetrics.functional.image import peak_signal_noise_ratio, structural_similarity_index_measure
-
-from utils.utils import get_size_without_zero_padding
-
-
-def psnr(input_images: Tensor, target_images: Tensor):
-    psnr_values = []
-    for i in range(target_images.size()[0]):
-        x1, y1, x2, y2 = get_size_without_zero_padding(target_images[i], padding_value=-1)
-        psnr_values.append(peak_signal_noise_ratio(input_images[i][:, y1:y2, x1:x2],
-                                                   target_images[i][:, y1:y2, x1:x2], 1.0))
-
-    return torch.sum(torch.stack(psnr_values))
-
-
-def ssim(input_images: Tensor, target_images: Tensor):
-    ssim_values = []
-    for i in range(target_images.size()[0]):
-        x1, y1, x2, y2 = get_size_without_zero_padding(target_images[i], padding_value=-1)
-        ssim_values.append(structural_similarity_index_measure(input_images[i][:, y1:y2, x1:x2].unsqueeze(0),
-                                                               target_images[i][:, y1:y2, x1:x2].unsqueeze(0)))
-    return torch.sum(torch.stack(ssim_values))
+from utils.metrics import psnr, ssim
+from utils.utils import interpolate
 
 
 class Metric(Enum):
@@ -45,10 +25,9 @@ class MetricAccumulator:
         for key in self.metrics:
             self.metrics[key] += self.functions[key](input_images, target_images)
 
-        interpolated = torch.nn.functional.interpolate(target_images, size=[s // 2 for s in target_images.shape[-2:]],
-                                                       mode="bilinear", align_corners=False)
-        interpolated = torch.nn.functional.interpolate(interpolated, size=target_images.shape[-2:], mode="bilinear",
-                                                       align_corners=False)
+        interpolated = interpolate(target_images, size=[s // 2 for s in target_images.shape[-2:]],
+                                   mode="bilinear", align_corners=False)
+        interpolated = interpolate(interpolated, size=target_images.shape[-2:], mode="bilinear", align_corners=False)
         self.img_to_save["SR"].append(input_images.cpu())
         self.img_to_save["HR"].append(target_images.cpu())
         self.img_to_save["BILINEAR"].append(interpolated.cpu())

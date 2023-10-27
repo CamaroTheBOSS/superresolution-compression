@@ -64,7 +64,7 @@ class VSRDataset(Dataset, ABC):
         lr_video = Resize((int(hr_video.shape[-2] / self.upscale_factor),
                            int(hr_video.shape[-1] / self.upscale_factor)))(hr_video)
 
-        return hr_video, lr_video
+        return lr_video, hr_video
 
     def __len__(self):
         return len(self.video_txt_files)
