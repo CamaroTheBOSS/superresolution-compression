@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from engine.evaluate import evaluate_model
 from engine.train import train_epoch
-from models.DummyBilinear import DummyBilinear
+from models.DummyBilinear import DummyBilinearSR, DummyBilinearVSR
 from models.SRCNN import SRCNN
 from models.VSRDataset import VSRDataset, SRDataset
 from models.VSRModel import VSRModel
@@ -54,7 +54,7 @@ def train(name: str = typer.Option("run", "--name", help="Name of run"),
     test_dataloader = DataLoader(test_set, batch_size=batch, shuffle=False, collate_fn=collate_SR)
 
     # 3. Get the model and set the optimizer
-    model = VSRModel().to(device)
+    model = DummyBilinearVSR().to(device)
     optimizer = AdamW(model.parameters(), lr=learning_rate)
     steps = epochs + 10
     lr_scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=steps, T_mult=1)
