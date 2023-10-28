@@ -46,7 +46,7 @@ def train(name: str = typer.Option("run", "--name", help="Name of run"),
 
     # 2. Initialize dataloaders
     train_set = VSRDataset(src_dataset)
-    test_set = VSRDataset(src_dataset)
+    test_set = VSRDataset(src_dataset, test_set=True)
     # train_set = SRDataset(src_dataset, ["BSD100", "Set5", "Urban100"])
     # test_set = SRDataset(src_dataset, ["Set14"])
 

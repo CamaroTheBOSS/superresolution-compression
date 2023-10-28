@@ -43,7 +43,7 @@ def augment_video(video: Tensor):
 
 class VSRDataset(Dataset, ABC):
     def __init__(self, dataset_root: str, upscale_factor: float = 2.,
-                 device: torch.device = torch.device("cuda")) -> None:
+                 device: torch.device = torch.device("cuda"), test_set: bool = False) -> None:
         """
         Dataset used for learning video superresolution. Dataloader with this dataset would return batches with
         shape B, N, C, H, W, where B is batch size, N number of frames of the longest video in batch
@@ -53,6 +53,7 @@ class VSRDataset(Dataset, ABC):
         super().__init__()
         self.root = dataset_root
         self.device = device
+        self.test_set = test_set
         self.upscale_factor = upscale_factor
         self.transform = get_transforms()
         txt_files = list(filter(lambda filename: filename.endswith(".txt"), os.listdir(dataset_root)))
@@ -60,7 +61,7 @@ class VSRDataset(Dataset, ABC):
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         hr_video = self.read_video(index)
-        hr_video = augment_video(hr_video)
+        hr_video = augment_video(hr_video) if not self.test_set else hr_video
         lr_video = Resize((int(hr_video.shape[-2] / self.upscale_factor),
                            int(hr_video.shape[-1] / self.upscale_factor)))(hr_video)
 
